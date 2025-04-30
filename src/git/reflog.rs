@@ -51,6 +51,7 @@ pub fn get_reflog(count: usize) -> Vec<RecentCheckoutWithMetadata> {
     let mut unique_ids = HashSet::new();
     let re_checkout_line = Regex::new(r"checkout: moving from \S* to (\S*) HEAD@\{(.*)\}").unwrap();
     let re_head_symbol = Regex::new(r"^(?:HEAD|ORIG_HEAD)(?:(?:@|^|~).*)?$").unwrap();
+    let current_branch = get_current_branch();
 
     get_reflog_lines()
         .iter()
@@ -59,7 +60,7 @@ pub fn get_reflog(count: usize) -> Vec<RecentCheckoutWithMetadata> {
             git_ref: caps[1].to_string(),
             relative_checkout_time: caps[2].parse().unwrap(),
         })
-        .skip(1)
+        .filter(|item| item.git_ref != current_branch)
         .filter(|co| !re_head_symbol.is_match(&co.git_ref))
         .filter(|item| unique_ids.insert(item.git_ref.to_string()))
         .map(|item| create_checkout_with_metadata(&item))
@@ -127,4 +128,16 @@ fn is_locally_accessible(reference: &str) -> bool {
         Ok(outp) => outp.status.success(),
         Err(_) => false,
     }
+}
+
+fn get_current_branch() -> String {
+    let output = Command::new("git")
+        .args(["branch", "--show-current"])
+        .output()
+        .expect("Failed to execute git command");
+
+    String::from_utf8(output.stdout)
+        .unwrap_or_default()
+        .trim()
+        .to_string()
 }
