@@ -72,7 +72,6 @@ jobs:
           formula-path: Formula/grec.rb
           homebrew-tap: ${{ github.repository_owner }}/homebrew-zapfhahn
           base-branch: main
-          download-url: https://github.com/${{ github.repository }}/releases/download/v${{ steps.extract_version.outputs.VERSION }}/recent-macos-amd64
           download-url: https://github.com/${{ github.repository }}/releases/download/v${{ steps.extract_version.outputs.VERSION }}/recent-macos-amd64.tar.gz
           commit-message: |
             {{formulaName}} {{version}}
