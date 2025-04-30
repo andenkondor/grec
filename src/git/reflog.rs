@@ -28,7 +28,7 @@ impl RecentCheckoutWithMetadata {
     }
     pub fn display(&self, idx: usize) {
         println!(
-            "{:>2}: {:<50} {:<2} {:<4} --- {:<20} --- {}",
+            "{:>2}: {:<50} {:<2} {:<4} {:<20} {}",
             idx + 1,
             self.recent_checkout.git_ref.clone(),
             if self.has_upstream {
