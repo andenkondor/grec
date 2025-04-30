@@ -16,11 +16,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact_name: recent
-            asset_name: recent-linux-amd64.tar.gz
+            artifact_name: grec
+            asset_name: grec-linux-amd64.tar.gz
           - os: macos-latest
-            artifact_name: recent
-            asset_name: recent-macos-amd64.tar.gz
+            artifact_name: grec
+            asset_name: grec-macos-amd64.tar.gz
 
     steps:
       - name: Checkout code
@@ -72,7 +72,7 @@ jobs:
           formula-path: Formula/grec.rb
           homebrew-tap: ${{ github.repository_owner }}/homebrew-zapfhahn
           base-branch: main
-          download-url: https://github.com/${{ github.repository }}/releases/download/v${{ steps.extract_version.outputs.VERSION }}/recent-macos-amd64.tar.gz
+          download-url: https://github.com/${{ github.repository }}/releases/download/v${{ steps.extract_version.outputs.VERSION }}/grec-macos-amd64.tar.gz
           commit-message: |
             {{formulaName}} {{version}}
         env:
