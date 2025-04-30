@@ -1,8 +1,18 @@
 use colored::Colorize;
 use core::str;
+use once_cell::sync::Lazy;
+use rayon::prelude::*;
 use regex::Regex;
 use std::collections::HashSet;
 use std::process::Command;
+
+static RE_CHECKOUT_LINE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"checkout: moving from \S* to (\S*) HEAD@\{(.*)\}").unwrap()
+});
+
+static RE_HEAD_SYMBOL: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^(?:HEAD|ORIG_HEAD)(?:(?:@|^|~).*)?$").unwrap()
+});
 
 #[derive(Debug)]
 pub struct RecentCheckout {
@@ -22,15 +32,17 @@ impl RecentCheckoutWithMetadata {
     pub fn check_out(&self) {
         Command::new("git")
             .arg("checkout")
-            .arg(self.recent_checkout.git_ref.clone())
+            .arg(&self.recent_checkout.git_ref)
             .output()
             .expect("error while checking out");
     }
     pub fn display(&self, idx: usize) {
+        let first_line = self.commit_message.lines().next().unwrap_or("");
+
         println!(
             "{:>2}: {:<50} {:<2} {:<4} {:<20} {}",
             idx + 1,
-            self.recent_checkout.git_ref.clone(),
+            &self.recent_checkout.git_ref,
             if self.has_upstream {
                 "UP".green()
             } else {
@@ -41,30 +53,31 @@ impl RecentCheckoutWithMetadata {
             } else {
                 "".normal()
             },
-            self.recent_checkout.relative_checkout_time.clone(),
-            self.commit_message.clone().split('\n').next().unwrap()
+            &self.recent_checkout.relative_checkout_time,
+            first_line
         );
     }
 }
 
 pub fn get_reflog(count: usize) -> Vec<RecentCheckoutWithMetadata> {
     let mut unique_ids = HashSet::new();
-    let re_checkout_line = Regex::new(r"checkout: moving from \S* to (\S*) HEAD@\{(.*)\}").unwrap();
-    let re_head_symbol = Regex::new(r"^(?:HEAD|ORIG_HEAD)(?:(?:@|^|~).*)?$").unwrap();
     let current_branch = get_current_branch();
 
-    get_reflog_lines()
+    let checkout_entries: Vec<RecentCheckout> = get_reflog_lines()
         .iter()
-        .filter_map(|line| re_checkout_line.captures(line))
+        .filter_map(|line| RE_CHECKOUT_LINE.captures(line))
         .map(|caps| RecentCheckout {
             git_ref: caps[1].to_string(),
-            relative_checkout_time: caps[2].parse().unwrap(),
+            relative_checkout_time: caps[2].to_string(),
         })
         .filter(|item| item.git_ref != current_branch)
-        .filter(|co| !re_head_symbol.is_match(&co.git_ref))
-        .filter(|item| unique_ids.insert(item.git_ref.to_string()))
-        .map(|item| create_checkout_with_metadata(&item))
+        .filter(|co| !RE_HEAD_SYMBOL.is_match(&co.git_ref))
+        .filter(|item| unique_ids.insert(item.git_ref.clone()))
         .take(count)
+        .collect();
+
+    checkout_entries.into_par_iter()
+        .map(|item| create_checkout_with_metadata(&item))
         .collect()
 }
 
@@ -79,23 +92,23 @@ fn get_reflog_lines() -> Vec<String> {
         .output()
         .expect("Failed to execute git command");
 
-    let output_string = String::from_utf8(output.stdout);
-
-    match output_string {
-        Ok(x) => x.split("\n").map(String::from).collect(),
-        Err(_) => Default::default(),
+    match String::from_utf8(output.stdout) {
+        Ok(x) => x.lines().map(String::from).collect(),
+        Err(_) => Vec::new(),
     }
 }
 
 fn create_checkout_with_metadata(checkout: &RecentCheckout) -> RecentCheckoutWithMetadata {
+    let git_ref = &checkout.git_ref;
+
     RecentCheckoutWithMetadata {
         recent_checkout: RecentCheckout {
-            git_ref: checkout.git_ref.clone(),
+            git_ref: git_ref.clone(),
             relative_checkout_time: checkout.relative_checkout_time.clone(),
         },
-        commit_message: get_commit_message(&checkout.git_ref),
-        has_upstream: has_upstream(&checkout.git_ref),
-        locally_accessible: is_locally_accessible(&checkout.git_ref),
+        commit_message: get_commit_message(git_ref),
+        has_upstream: has_upstream(git_ref),
+        locally_accessible: is_locally_accessible(git_ref),
     }
 }
 
@@ -109,10 +122,9 @@ fn get_commit_message(reference: &str) -> String {
 }
 
 fn has_upstream(reference: &str) -> bool {
-    let remote_prefix: String = "refs/remotes/origin/".to_owned();
-    let remote_reference = remote_prefix + reference;
+    let remote_reference = format!("refs/remotes/origin/{}", reference);
     let output = Command::new("git")
-        .args(["show-branch", &remote_reference[..]])
+        .args(["show-branch", &remote_reference])
         .output();
 
     match output {
