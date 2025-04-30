@@ -17,13 +17,10 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: recent
-            asset_name: recent-linux-amd64
-          - os: windows-latest
-            artifact_name: recent.exe
-            asset_name: recent-windows-amd64.exe
+            asset_name: recent-linux-amd64.tar.gz
           - os: macos-latest
             artifact_name: recent
-            asset_name: recent-macos-amd64
+            asset_name: recent-macos-amd64.tar.gz
 
     steps:
       - name: Checkout code
@@ -42,11 +39,19 @@ jobs:
           command: build
           args: --release
 
+      - name: Create tar.gz archive
+        run: |
+          mkdir -p dist
+          cp target/release/${{ matrix.artifact_name }} dist/
+          cd dist
+          tar -czf ${{ matrix.asset_name }} ${{ matrix.artifact_name }}
+          cd ..
+
       - name: Upload binary to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/release/${{ matrix.artifact_name }}
+          file: dist/${{ matrix.asset_name }}
           asset_name: ${{ matrix.asset_name }}
           tag: ${{ github.ref }}
           overwrite: true
@@ -68,6 +73,7 @@ jobs:
           homebrew-tap: ${{ github.repository_owner }}/homebrew-zapfhahn
           base-branch: main
           download-url: https://github.com/${{ github.repository }}/releases/download/v${{ steps.extract_version.outputs.VERSION }}/recent-macos-amd64
+          download-url: https://github.com/${{ github.repository }}/releases/download/v${{ steps.extract_version.outputs.VERSION }}/recent-macos-amd64.tar.gz
           commit-message: |
             {{formulaName}} {{version}}
         env:
