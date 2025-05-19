@@ -51,7 +51,7 @@ This will display a list of your recent branch checkouts and prompt you to selec
 ### Options
 
 - `-c, --count <COUNT>`: Specify the number of recent branches to display (default: 10)
-- `-p, --prompt-checkout`: Enable/disable the checkout prompt (default: enabled)
+- `-s, --scripting`: disable all interactions, like prompting for checkout
 
 Examples:
 
@@ -60,7 +60,7 @@ Examples:
 grec -c 20
 
 # Show recent branches without prompting for checkout
-grec --no-prompt-checkout
+grec --scripting
 ```
 
 ## Features

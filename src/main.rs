@@ -10,8 +10,8 @@ use std::io;
 struct Cli {
     #[arg(default_value_t = 10, short, long)]
     count: usize,
-    #[arg(default_value_t = true, short, long)]
-    prompt_checkout: bool,
+    #[arg(default_value_t = false, short, long)]
+    scripting: bool,
 }
 
 fn main() {
@@ -23,7 +23,7 @@ fn main() {
         rec.display(idx);
     }
 
-    if cli.prompt_checkout {
+    if !cli.scripting {
         println!("Please insert the number of the line for checkout:");
         let mut input_line = String::new();
         io::stdin()
