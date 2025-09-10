@@ -1,4 +1,3 @@
-use colored::Colorize;
 use core::str;
 use once_cell::sync::Lazy;
 use rayon::prelude::*;
@@ -6,13 +5,11 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::process::Command;
 
-static RE_CHECKOUT_LINE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"checkout: moving from \S* to (\S*) HEAD@\{(.*)\}").unwrap()
-});
+static RE_CHECKOUT_LINE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"checkout: moving from \S* to (\S*) HEAD@\{(.*)\}").unwrap());
 
-static RE_HEAD_SYMBOL: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^(?:HEAD|ORIG_HEAD)(?:(?:@|^|~).*)?$").unwrap()
-});
+static RE_HEAD_SYMBOL: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^(?:HEAD|ORIG_HEAD)(?:(?:@|^|~).*)?$").unwrap());
 
 #[derive(Debug)]
 pub struct RecentCheckout {
@@ -29,30 +26,14 @@ pub struct RecentCheckoutWithMetadata {
 }
 
 impl RecentCheckoutWithMetadata {
-    pub fn check_out(&self) {
-        Command::new("git")
-            .arg("checkout")
-            .arg(&self.recent_checkout.git_ref)
-            .output()
-            .expect("error while checking out");
-    }
-    pub fn display(&self, idx: usize) {
+    pub fn display(&self) {
         let first_line = self.commit_message.lines().next().unwrap_or("");
 
         println!(
-            "{:>2}: {:<50} {:<2} {:<4} {:<20} {}",
-            idx + 1,
+            "{},{},{},{},{}",
             &self.recent_checkout.git_ref,
-            if self.has_upstream {
-                "UP".green()
-            } else {
-                "".normal()
-            },
-            if !self.locally_accessible {
-                "GONE".red()
-            } else {
-                "".normal()
-            },
+            if self.has_upstream { "UP" } else { "" },
+            if !self.locally_accessible { "GONE" } else { "" },
             &self.recent_checkout.relative_checkout_time,
             first_line
         );
@@ -76,7 +57,8 @@ pub fn get_reflog(count: usize) -> Vec<RecentCheckoutWithMetadata> {
         .take(count)
         .collect();
 
-    checkout_entries.into_par_iter()
+    checkout_entries
+        .into_par_iter()
         .map(|item| create_checkout_with_metadata(&item))
         .collect()
 }
